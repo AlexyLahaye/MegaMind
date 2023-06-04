@@ -2,11 +2,10 @@ package com.application.megamind
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.util.Log
-import android.widget.FrameLayout
 import android.widget.Toast
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import okhttp3.ResponseBody
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -44,79 +43,6 @@ class AccueilActivity : AppCompatActivity() {
             })
         }
 
-
-        fun getUnProfilById(posts : List<List<Post>>, callback: (Profil) -> Unit){
-            var reqProfil = MegaMindService.profilService.searchProfilById(posts[0][0].id_profil)
-
-            reqProfil.enqueue(object : Callback<List<Profil>>{
-                override fun onResponse(
-                    call: Call<List<Profil>>,
-                    response: Response<List<Profil>>
-                ) {
-                    val profil = response.body()
-
-                    if(response.code() == 200 && profil != null) {
-                        callback(profil[0])
-                    }
-                    else {
-                        Toast.makeText( this@AccueilActivity,"DDT POSTS FLOP", Toast.LENGTH_SHORT).show()
-                    }
-
-                }
-                override fun onFailure(call: Call<List<Profil>>, t: Throwable) {
-                    Toast.makeText( this@AccueilActivity,"EXT POSTS Flop", Toast.LENGTH_SHORT).show()
-                }
-            })
-        }
-
-
-        fun getNbLike(post: Post, callback: (Int) -> Unit) {
-            val reqLike = post.id_post?.let { MegaMindService.likeService.getNbLike(it, 1) }
-
-            reqLike?.enqueue(object : Callback<nbLike> {
-                override fun onResponse(call: Call<nbLike>, response: Response<nbLike>) {
-                    val nbLike = response.body()
-                    if (response.code() == 200) {
-                        if (nbLike != null) {
-                            callback(nbLike.nbLike) // Appel du callback avec la valeur du nombre de likes
-                        } else {
-                            // Gestion de l'erreur si le nombre de likes est null
-                            Toast.makeText(this@AccueilActivity, "INT LIKE Flop", Toast.LENGTH_SHORT).show()
-                        }
-                    } else {
-                        // Gestion de l'erreur en cas de réponse non réussie
-                        Toast.makeText(this@AccueilActivity, "EXT INT LIKE Flop", Toast.LENGTH_SHORT).show()
-                    }
-                }
-
-                override fun onFailure(call: Call<nbLike>, t: Throwable) {
-                    // Gestion de l'erreur en cas d'échec de la requête
-                    Toast.makeText(this@AccueilActivity, "EXT LIKE Flop", Toast.LENGTH_SHORT).show()
-                }
-            })
-        }
-
-        fun isLikedByUser(post: Post, profil: Profil, callback: (Boolean) -> Unit){
-            val reqLike = post.id_post?.let { profil.id_profil?.let { it1 -> MegaMindService.likeService.getIsLikedByUser(it, 1, it1 )}}
-
-            reqLike?.enqueue(object : Callback<isLiked>{
-                override fun onResponse(call: Call<isLiked>, response: Response<isLiked>) {
-                    val isLiked = response.body()
-                    if(response.code() == 200){
-                        if (isLiked != null) {
-                            callback(isLiked.isLiked)
-                        }
-                    }
-                    else {
-                        Toast.makeText(this@AccueilActivity, "INT LIKED Flop", Toast.LENGTH_SHORT).show()
-                    }
-                }
-                override fun onFailure(call: Call<isLiked>, t: Throwable) {
-                    Toast.makeText(this@AccueilActivity, "EXT LIKED Flop", Toast.LENGTH_SHORT).show()
-                }
-
-            })
-        }
         /*fun updatePost(postGen: PostGen){
             val position = posts.indexOfFirst { it[0].id_post == post.id_post }
             if (position != -1) {
@@ -129,16 +55,20 @@ class AccueilActivity : AppCompatActivity() {
             }
         }*/
 
-        fun addlike(post : Post, profil: Profil, nbLike: nbLike, postAdapter: PostAdapter, isLiked: isLiked){
-            var like = post.id_post?.let { profil.id_profil?.let { it1 -> Like(null, it, it1,1, null, null ) } }
-            var reqLike = like?.let { MegaMindService.likeService.createLike(it) }
+        fun updateLike(post : Post, profil: Profil){
+            var like = post.id_post?.let { profil.id_profil?.let { it1 -> Like(null, it, it1,2, null, null ) } }
+            var reqLike: Call<ResponseBody>? = null
+            if (post.isLiked != true){
+                reqLike = like?.let { MegaMindService.likeService.createLike(it) }
+            } else {
+                reqLike = post.id_post?.let { MegaMindService.likeService.deleteLike(it, 2) }
+            }
 
-            reqLike?.enqueue(object : Callback<Like>{
-                override fun onResponse(call: Call<Like>, response: Response<Like>) {
+            reqLike?.enqueue(object : Callback<ResponseBody>{
+                override fun onResponse(call: Call<ResponseBody>, response: Response<ResponseBody>) {
                     val body = response.body()
                     if(response.code() == 200){
                         if (body != null){
-
 
                         }
                     }
@@ -147,7 +77,7 @@ class AccueilActivity : AppCompatActivity() {
                     }
                 }
 
-                override fun onFailure(call: Call<Like>, t: Throwable) {
+                override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
                     Toast.makeText(this@AccueilActivity, "EXT LIKE Flop", Toast.LENGTH_SHORT).show()
                 }
             })
@@ -162,62 +92,14 @@ class AccueilActivity : AppCompatActivity() {
                     val post = response.body()
 
                     if (response.code() == 200 && post != null) {
-                        var listPostGens : MutableList<PostGen> = mutableListOf()
-                        for(uneListPosts in post){
-                            Log.d("unPost", uneListPosts.toString())
-                            for(unPost in uneListPosts){
-                                Log.d("unPost", unPost.toString())
-                                //TOUT LES APPELS DE FONCTIONS AFIN D'AFFICHER LES POSTS !
-                                getUnProfilById(post) { profil ->
-                                    val pseudo_profil = profil.pseudo_profil
-                                    getNbLike(post[0][0]) { nbLike ->
-                                        isLikedByUser(post[0][0], profil) { isLiked ->
-                                            val postGen = PostGen(unPost.id_post,unPost.id_profil,unPost.contenu_post, unPost.sensibilite_post, unPost.createdAt, unPost.updatedAt,pseudo_profil, nbLike, isLiked)
-                                            Log.d("POSTGEN", postGen.toString())
-                                            listPostGens.add(postGen)
-                                            // FAIRE LE TOUT EN BACK END AFIN D'AVOIR UNE LISTE D'OBJET POST
-
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        val postAdapter = PostAdapter(listPostGens) { position ->
+                        var listPostGens = post
+                        val postAdapter = PostAdapter(listPostGens[0]) { position ->
                             // EVENT
+                            val selectedPost = listPostGens[0][position]
+                            updateLike(selectedPost, profil)
+
                         }
                         listPosts.adapter = postAdapter
-
-
-
-
-//                        if (!post[0].isEmpty()) {
-//                            val postAdapterCallback: (String, Int, Boolean) -> Unit = { pseudo_profil, nbLike, isLiked ->
-//                                // Création de l'instance de l'adaptateur avec les posts et les autres données
-//                                val postAdapter = PostAdapter(this@AccueilActivity, post, pseudo_profil, nbLike, isLiked) { position ->
-//                                    //Evenement sur le FrameLayout
-//                                    //val postGen = PostGen(post.id_post, post.id_profil, post.contenu_post, post.sensibilite_post, post.createdAt, post.updatedAt, nbLike.nbLike, isLiked.isLiked)
-//                                }
-//                                // Assignation de l'adaptateur au RecyclerView
-//                                listPosts.adapter = postAdapter
-//                            }
-//                            //TOUT LES APPELS DE FONCTIONS AFIN D'AFFICHER LES POSTS !
-//                            getUnProfilById(post) { profil ->
-//                                val pseudo_profil = profil.pseudo_profil
-//                                getNbLike(post[0][0]) { nbLike ->
-//                                    isLikedByUser(post[0][0], profil) { isLiked ->
-//                                        postAdapterCallback(pseudo_profil, nbLike, isLiked)
-//                                    }
-//                                }
-//                            }
-
-
-//                        } else {
-//                            Toast.makeText(
-//                                this@AccueilActivity,
-//                                "DDT POSTS FLOP",
-//                                Toast.LENGTH_SHORT
-//                            ).show()
-//                        }
                     }
                 }
                 override fun onFailure(call: Call<MutableList<List<Post>>>, t: Throwable) {

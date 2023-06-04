@@ -64,7 +64,6 @@ class ProfilActivity : AppCompatActivity() {
                             intent.putExtra("pseudoProfil", pseudoProfil)
                             startActivity(intent)
                         }
-s
 
                     } else {
                         Toast.makeText( this@ProfilActivity,"Error during loading of operation", Toast.LENGTH_SHORT).show()
