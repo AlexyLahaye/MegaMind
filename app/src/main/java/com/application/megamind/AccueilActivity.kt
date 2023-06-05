@@ -2,6 +2,9 @@ package com.application.megamind
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.view.View
+import android.widget.FrameLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -58,18 +61,30 @@ class AccueilActivity : AppCompatActivity() {
         fun updateLike(post : Post, profil: Profil){
             var like = post.id_post?.let { profil.id_profil?.let { it1 -> Like(null, it, it1,2, null, null ) } }
             var reqLike: Call<ResponseBody>? = null
+            var action = 0
             if (post.isLiked != true){
+                action = 1
                 reqLike = like?.let { MegaMindService.likeService.createLike(it) }
             } else {
-                reqLike = post.id_post?.let { MegaMindService.likeService.deleteLike(it, 2) }
+                action = 2
+                reqLike = post.id_post?.let { profil.id_profil?.let { it1 ->
+                    MegaMindService.likeService.deleteLike(it,
+                        it1, 2)
+                } }
             }
 
             reqLike?.enqueue(object : Callback<ResponseBody>{
                 override fun onResponse(call: Call<ResponseBody>, response: Response<ResponseBody>) {
                     val body = response.body()
+                    val code = response.code()
                     if(response.code() == 200){
                         if (body != null){
-
+                            // Modifier l'affichage du post
+                            if (action != 1) {
+                                Toast.makeText(this@AccueilActivity, "Suppression du like du post de ${post.pseudo_profil}", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(this@AccueilActivity, "Ajout du like du post de ${post.pseudo_profil}", Toast.LENGTH_SHORT).show()
+                            }
                         }
                     }
                     else{
@@ -78,28 +93,34 @@ class AccueilActivity : AppCompatActivity() {
                 }
 
                 override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
-                    Toast.makeText(this@AccueilActivity, "EXT LIKE Flop", Toast.LENGTH_SHORT).show()
+                    val errorMessage = "EXT Like: ${t.message}"
+                    Toast.makeText(this@AccueilActivity, errorMessage, Toast.LENGTH_SHORT).show()
                 }
             })
         }
 
 
         fun getAllPostFromFollowedProfilByUserP(profil : Profil){
-            var reqPost = MegaMindService.postService.getAllPostFromProfilFollowed(profil.id_profil?:"")
+            val reqPost = MegaMindService.postService.getAllPostFromProfilFollowed(profil.id_profil?:"")
 
             reqPost.enqueue(object : Callback<MutableList<List<Post>>>{
                 override fun onResponse(call: Call<MutableList<List<Post>>>, response: Response<MutableList<List<Post>>>) {
                     val post = response.body()
 
                     if (response.code() == 200 && post != null) {
-                        var listPostGens = post
-                        val postAdapter = PostAdapter(listPostGens[0]) { position ->
-                            // EVENT
-                            val selectedPost = listPostGens[0][position]
-                            updateLike(selectedPost, profil)
+                        val listPostGens = post
+                        if (listPostGens[0].size > 0){
+                            val postAdapter = PostAdapter(listPostGens[0]) { position ->
+                                // EVENT
+                                val selectedPost = listPostGens[0][position]
+                                updateLike(selectedPost, profil)
 
+                            }
+                            listPosts.adapter = postAdapter
+                        } else {
+                            findViewById<TextView>(R.id.TVNoPost).visibility = View.VISIBLE
                         }
-                        listPosts.adapter = postAdapter
+
                     }
                 }
                 override fun onFailure(call: Call<MutableList<List<Post>>>, t: Throwable) {

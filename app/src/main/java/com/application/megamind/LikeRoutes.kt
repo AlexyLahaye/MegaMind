@@ -14,9 +14,10 @@ interface LikeRoutes {
     fun createLike(@Body like : Like): Call<ResponseBody>
 
     // Suppression d'un like
-    @DELETE("/like/{id_contenu_like}/{id_etat_like}")
+    @DELETE("/like/{id_contenu_like}/{id_profil_like}/{id_etat_like}")
     fun deleteLike(
         @Path("id_contenu_like") id_contenu_like: String,
+        @Path("id_profil_like") id_profil_like: String,
         @Path("id_etat_like") id_etat_like: Int
     ): Call<ResponseBody>
 }
